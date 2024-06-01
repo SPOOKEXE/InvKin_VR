@@ -53,13 +53,19 @@ async def parse_detection(
 
 class AsyncTkCanvas:
 
+	window_closed : bool
 	canvas_size : tuple[int, int]
 
 	def __init__( self, width : int, height : int ) -> None:
+		self.window_closed = False
+		self.canvas_size = (width, height)
 		self.root = tk.Tk()
 		self.canvas = tk.Canvas(self.root, width=width, height=height)
 		self.canvas.pack()
-		self.canvas_size = (width, height)
+
+		def on_close():
+			self.window_closed = True
+		self.root.protocol("WM_DELETE_WINDOW", on_close)
 
 	async def load_image( self, image : Image.Image ) -> None:
 		image.thumbnail(self.canvas_size)
@@ -84,7 +90,9 @@ async def tracker_main() -> None:
 	display_canvas = AsyncTkCanvas(800, 800)
 	display_canvas.root.title('Image Viewer')
 
-	while videoCapture.isOpened() is True:
+	while videoCapture.isOpened() is True and display_canvas.window_closed is False:
+		if display_canvas.window_closed is True:
+			break
 		success, image = videoCapture.read()
 		if success is True:
 			image = await parse_detection( image, handTracker, poseTracker, faceMeshTracker )
@@ -92,6 +100,7 @@ async def tracker_main() -> None:
 		await display_canvas.update()
 		await asyncio.sleep(0.01)
 
+	display_canvas.root.destroy()
 	videoCapture.release()
 
 async def fastapi_main( host : str = '127.0.0.1', port : int = 5100, api_key : str = None ) -> None:
