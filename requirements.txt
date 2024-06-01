@@ -1,4 +1,7 @@
 numpy
-matplotlib
 pillow
 mediapipe
+python-multipart
+requests
+fastapi
+uvicorn[standard]

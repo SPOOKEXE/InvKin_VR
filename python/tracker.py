@@ -21,6 +21,21 @@ class NormalizedLandmark(BaseModel):
 	y : float
 	z : float
 
+class HandTrackerSettings(BaseModel):
+	model_complexity : int = 0
+	min_detection_confidence : float = 0.4
+	min_tracking_confidence : float = 0.4
+
+class PoseTrackerSettings(BaseModel):
+	min_detection_confidence : float = 0.5
+	min_tracking_confidence : float = 0.5
+
+class FaceMeshTrackerSettings(BaseModel):
+	max_num_faces : int = 1
+	refine_landmarks : bool = True
+	min_detection_confidence : float = 0.4
+	min_tracking_confidence : float = 0.4
+
 class Results(BaseModel):
 	pass
 
@@ -35,12 +50,12 @@ class FaceMeshResults(Results):
 	landmarks : list[NormalizedLandmark]
 
 def preprocess_image( image : np.ndarray ) -> np.ndarray:
-	# image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+	# image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 	image.flags.writeable = False # slight performance boost
 	return image
 
 def unprocess_image( image : np.ndarray ) -> np.ndarray:
-	image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+	image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 	image.flags.writeable = True # slight performance boost
 	return image
 
@@ -96,14 +111,12 @@ class Tracker:
 		pass
 
 class FaceMeshTracker(Tracker):
+	settings : FaceMeshTrackerSettings
+	face_mesh : FaceMesh
 
-	def __init__( self ) -> None:
-		self.face_mesh = FaceMesh(
-			max_num_faces=1,
-			refine_landmarks=True,
-			min_detection_confidence=0.4,
-			min_tracking_confidence=0.4
-		)
+	def __init__( self, settings : FaceMeshTrackerSettings ) -> None:
+		self.settings = settings
+		self.face_mesh = FaceMesh( **settings.model_dump() )
 
 	def parse_image( self, image : np.ndarray ) -> FaceMeshResults:
 		results = self.face_mesh.process( image )
@@ -137,12 +150,12 @@ class FaceMeshTracker(Tracker):
 		)
 
 class PoseTracker(Tracker):
+	settings : PoseTrackerSettings
+	pose : Pose
 
-	def __init__( self ) -> None:
-		self.pose = Pose(
-			min_detection_confidence=0.5,
-			min_tracking_confidence=0.5
-		)
+	def __init__( self, settings : PoseTrackerSettings ) -> None:
+		self.settings = settings
+		self.pose = Pose( **settings.model_dump() )
 
 	def parse_image( self, image : np.ndarray ) -> PoseTrackerResults:
 		results = self.pose.process( image ) # pose_landmarks, pose_world_landmarks
@@ -162,17 +175,15 @@ class PoseTracker(Tracker):
 			landmark_list=pose_landmarks,
 			connections=POSE_CONNECTIONS,
 			landmark_drawing_spec=get_default_pose_landmarks_style(),
-			#connection_drawing_spec=get_default_pose_landmarks_style(),
 		)
 
 class HandTracker(Tracker):
+	settings : HandTrackerSettings
+	hands : Hands
 
-	def __init__( self ) -> None:
-		self.hands = Hands(
-			model_complexity=0,
-			min_detection_confidence=0.4,
-			min_tracking_confidence=0.4
-		)
+	def __init__( self, settings : HandTrackerSettings ) -> None:
+		self.settings = settings
+		self.hands = Hands( **settings.model_dump() )
 
 	def parse_image( self, image : np.ndarray ) -> HandTrackerResults:
 		results = self.hands.process( image )
@@ -220,9 +231,3 @@ def test_handTracker( image : np.ndarray ) -> None:
 	image = unprocess_image( image )
 	handTracker.draw_landmarks(image, ht_results.landmarks)
 	Image.fromarray( image ).show()
-
-if __name__ == '__main__':
-	#test_faceTracker(cv2.imread('face.png'))
-	#test_poseTracker(cv2.imread('pose.png'))
-	# test_handTracker(cv2.imread('hand.png'))
-	pass
