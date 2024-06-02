@@ -23,18 +23,18 @@ class NormalizedLandmark(BaseModel):
 
 class HandTrackerSettings(BaseModel):
 	model_complexity : int = 0
-	min_detection_confidence : float = 0.4
-	min_tracking_confidence : float = 0.4
+	min_detection_confidence : float = 0.3
+	min_tracking_confidence : float = 0.3
 
 class PoseTrackerSettings(BaseModel):
-	min_detection_confidence : float = 0.5
-	min_tracking_confidence : float = 0.5
+	min_detection_confidence : float = 0.3
+	min_tracking_confidence : float = 0.3
 
 class FaceMeshTrackerSettings(BaseModel):
 	max_num_faces : int = 1
 	refine_landmarks : bool = True
-	min_detection_confidence : float = 0.4
-	min_tracking_confidence : float = 0.4
+	min_detection_confidence : float = 0.3
+	min_tracking_confidence : float = 0.3
 
 class Results(BaseModel):
 	pass
@@ -44,7 +44,7 @@ class PoseTrackerResults(Results):
 	landmarks_3d : list[NormalizedLandmark]
 
 class HandTrackerResults(Results):
-	landmarks : list[NormalizedLandmark]
+	landmarks : list[list[NormalizedLandmark]]
 
 class FaceMeshResults(Results):
 	landmarks : list[NormalizedLandmark]
@@ -164,7 +164,7 @@ class PoseTracker(Tracker):
 		else:
 			landmarks = []
 		if results.pose_world_landmarks is not None:
-			landmarks_3d = landmarks_3d = [NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in results.pose_world_landmarks.landmark]
+			landmarks_3d = [NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z) for landmark in results.pose_world_landmarks.landmark]
 		else:
 			landmarks_3d = []
 		return PoseTrackerResults(landmarks=landmarks, landmarks_3d=landmarks_3d)
@@ -190,23 +190,28 @@ class HandTracker(Tracker):
 		landmarks = []
 		if results.multi_hand_landmarks is not None:
 			for hand_landmarks in results.multi_hand_landmarks:
+				hand_marks : list = []
 				for landmark in hand_landmarks.landmark:
-					landmarks.append(NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z))
+					hand_marks.append(NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z))
+				landmarks.append(hand_marks)
 		landmarks_3d = []
 		if results.multi_hand_world_landmarks is not None:
 			for hand_world_landmarks in results.multi_hand_world_landmarks:
+				hand_marks : list = []
 				for landmark in hand_world_landmarks.landmark:
-					landmarks_3d.append(NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z))
+					hand_marks.append(NormalizedLandmark(x=landmark.x, y=landmark.y, z=landmark.z))
+				landmarks_3d.append(hand_marks)
 		return HandTrackerResults(landmarks=landmarks, landmarks_3d=landmarks_3d)
 
-	def draw_landmarks( self, image : np.ndarray, pose_landmarks : list[NormalizedLandmark] ) -> None:
-		_draw_landmarks(
-			image,
-			landmark_list=pose_landmarks,
-			connections=HAND_CONNECTIONS,
-			#landmark_drawing_spec=get_default_hand_connections_style(),
-			connection_drawing_spec=get_default_hand_connections_style(),
-		)
+	def draw_landmarks( self, image : np.ndarray, pose_landmarks : list[list[NormalizedLandmark]] ) -> None:
+		for landmark_array in pose_landmarks:
+			_draw_landmarks(
+				image,
+				landmark_list=landmark_array,
+				connections=HAND_CONNECTIONS,
+				#landmark_drawing_spec=get_default_hand_connections_style(),
+				connection_drawing_spec=get_default_hand_connections_style(),
+			)
 
 def test_faceTracker( image : np.ndarray ) -> None:
 	image = preprocess_image( image )

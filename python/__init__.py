@@ -82,7 +82,7 @@ class AsyncTkCanvas:
 		self.root.update()
 
 async def tracker_main() -> None:
-	videoCapture = cv2.VideoCapture(0)
+	videoCapture = cv2.VideoCapture(1)
 	handTracker = HandTracker( HandTrackerSettings() )
 	poseTracker = PoseTracker( PoseTrackerSettings() )
 	faceMeshTracker = FaceMeshTracker( FaceMeshTrackerSettings() )
